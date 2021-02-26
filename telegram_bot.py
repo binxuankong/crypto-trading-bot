@@ -37,11 +37,11 @@ def check(update, context):
         update.message.reply_text(text='Error encountered. Please provide a valid coin.')
 
 def winner(update, context):
-    arg_list = get_top_change()
+    arg_list = get_top_change(reverse=True)
     update.message.reply_text(text=emojize(WIN_TEMPLATE.format(*arg_list)))
 
 def loser(update, context):
-    arg_list = get_top_change(reverse=True)
+    arg_list = get_top_change()
     update.message.reply_text(text=emojize(LOSE_TEMPLATE.format(*arg_list)))
 
 def period_price_check(context):
