@@ -42,7 +42,7 @@ def winner(update, context):
 
 def loser(update, context):
     arg_list = get_top_change(reverse=True)
-    update.message.reply_text(text=.emojize(LOSE_TEMPLATE.format(*arg_list)))
+    update.message.reply_text(text=emojize(LOSE_TEMPLATE.format(*arg_list)))
 
 def period_price_check(context):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
@@ -76,7 +76,7 @@ def get_price_change(coin, client):
     else:
         return ''
 
-def get_top_change(reverse=False)
+def get_top_change(reverse=False):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
     dict_list = []
     for coin in COINS:
@@ -97,7 +97,7 @@ def main():
     dp.add_handler(CommandHandler('loser', loser))
     # Job queue
     job_queue = updater.job_queue
-    job_queue.run_repeating(period_price_check, interval=480, first=20) # Run every 8 minutes
+    job_queue.run_repeating(period_price_check, interval=500, first=10) # Run every 8 minutes
     updater.start_polling()
     updater.idle()
 
