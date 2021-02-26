@@ -1,3 +1,13 @@
+HELP_TEMPLATE = """
+:full_moon: Coins available:
+{}
+:information_source: Commands:
+ - /help
+ - /check [coin]
+ - /winner
+ - /loser
+"""
+
 CHECK_TEMPLATE = """{} :full_moon: - {} :dollar:
 :clock1: Current Price:\t{}
 :clock5: 5min Average Price:\t{}
@@ -24,4 +34,40 @@ BY {}% :bear:
 :unlock: Open Price:\t\t{}
 :lock: Close Price:\t\t{}
 :chart_with_downwards_trend: Price Difference:\t{}
+"""
+
+WIN_TEMPLATE = """:trophy: 24HR Top Gainers :trophy:
+:one: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:two: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:three: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:four: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:five: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+"""
+
+LOSE_TEMPLATE = """:money_with_wings: 24HR Top Losers :money_with_wings:
+:one: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:two: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:three: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:four: {}
+ - Last Price: {}
+ - 24h % Change: {}%
+:five: {}
+ - Last Price: {}
+ - 24h % Change: {}%
 """
