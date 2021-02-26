@@ -13,6 +13,7 @@ BINANCE_API_KEY = secrets['BINANCE_API_KEY']
 BINANCE_SECRET_KEY = secrets['BINANCE_SECRET_KEY']
 BRIDGE = 'USDT'
 COINS = ['BTC', 'ETH', 'LTC', 'XRP', 'BNB', 'ADA', 'BAT', 'FTM']
+NOTIF_LIMIT = 2
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -59,7 +60,7 @@ def get_price_change(coin, client):
     close_price = float(kline[4])
     price_diff = close_price - open_price
     price_diff_percent = price_diff / open_price * 100
-    if abs(price_diff_percent) >= 1:
+    if abs(price_diff_percent) >= NOTIF_LIMIT:
         if price_diff_percent > 0:
             return UP_TEMPLATE.format(coin, price_diff_percent, open_price, close_price, price_diff)
         else:
