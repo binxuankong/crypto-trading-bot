@@ -72,21 +72,25 @@ LOSE_TEMPLATE = """:money_with_wings: 24HR Top Losers :money_with_wings:
  - 24h % Change: {}%
 """
 
-PORTFOLIO_TEMPLATE = """:file_folder: Portfolio :open_file_folder:
+PORTFOLIO_HEADER = """:file_folder: Portfolio :open_file_folder:
 :dollar: USDT:\t\t{}
-:full_moon: FTM:\t\t{}
+"""
+
+PORTFOLIO_BODY = """:full_moon: {}:\t\t{}
     \t\t\t@ ${}
-:moneybag: Networth:\t{}
+"""
+
+PORTFOLIO_FOOTER = """:moneybag: Networth:\t{}
 :chart_with_upwards_trend: Net Growth:\t{}
 :chart_with_upwards_trend: Percent Growth:\t{}%
 """
 
-BUY_TEMPLATE = """BUY {} FTM
+BUY_TEMPLATE = """BOUGHT {} {}
     @ {}
-Networth: {}
+NET: {}
 """
 
-SELL_TEMPLATE = """SELL {} FTM
+SELL_TEMPLATE = """SOLD {} {}
     @ {}
-Networth: {}
+NET: {}
 """

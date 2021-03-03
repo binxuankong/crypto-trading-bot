@@ -1,3 +1,4 @@
 python-binance
 python-telegram-bot
 emoji
+numpy

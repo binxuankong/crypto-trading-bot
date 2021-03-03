@@ -17,9 +17,10 @@ COINS = ['BTC', 'ETH', 'LTC', 'XRP', 'BNB', 'ADA', 'BAT', 'FTM']
 NOTIF_LIMIT = 2
 
 # Portfolio
-INITIAL = 600
-PORTFOLIO = {'USDT': INITIAL, 'FTM': 0, 'BuyPrice': 0, 'SellPrice': 0, 'TransTime': dt.now(), 'TransFee': 0.001,
-             'TradeLimit': 0.002}
+INITIAL = 250
+TRANS_FEE = 0.001
+PORTFOLIO = {'BNB': {'USDT': INITIAL, 'COIN': 0}, 'ADA': {'USDT': INITIAL, 'COIN': 0}, 'BAT': {'USDT': INITIAL, 'COIN': 0},
+             'FTM': {'USDT': INITIAL, 'COIN': 0}}
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -97,26 +98,33 @@ def get_top_change(reverse=False):
 # Tradebot functions
 def portfolio(update, context):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-    symbol = 'FTM' + BRIDGE
-    curr_price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-    if PORTFOLIO['USDT'] > 0:
-        networth = PORTFOLIO['USDT']
-    else:
-        networth = PORTFOLIO['FTM'] * curr_price
-    net_growth = networth - INITIAL
-    percent_growth = net_growth / INITIAL * 100
-    text = PORTFOLIO_TEMPLATE.format(PORTFOLIO['USDT'], PORTFOLIO['FTM'], curr_price, networth, net_growth, percent_growth)
+    total_fiat = 0
+    total_networth = 0
+    text = ""
+    for p in PORTFOLIO:
+        symbol = p + BRIDGE
+        price = float(client.get_ticker(symbol=symbol)['lastPrice'])
+        if PORTFOLIO[p]['USDT'] > 0:
+            total_fiat += PORTFOLIO[p]['USDT']
+            total_networth += PORTFOLIO[p]['USDT']
+            text += PORTFOLIO_BODY.format(p, 0, price)
+        else:
+            total_networth += PORTFOLIO[p]['COIN'] * price
+            text += PORTFOLIO_BODY.format(p, PORTFOLIO[p]['COIN'], price)
+    net_growth = total_networth - (len(PORTFOLIO * INITIAL)
+    percent_growth = net_growth / (len(PORTFOLIO * INITIAL) * 100
+    text = PORTFOLIO_HEADER.format(total_fiat) + text + PORTFOLIO_FOOTER.format(total_networth, net_growth, percent_growth)
     update.message.reply_text(emojize(text))
 
 def buy(update, context):
     try:
         coin = context.args[0].upper()
-        if coin == 'FTM':
-            if PORTFOLIO['USDT'] > 0:
+        if coin in PORTFOLIO.keys():
+            if PORTFOLIO[coin]['USDT'] > 0:
                 symbol = coin + BRIDGE
                 client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-                curr_price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-                buy_ftm(context, curr_price)
+                price = float(client.get_ticker(symbol=symbol)['lastPrice'])
+                buy_coin(context, coin, price)
             else:
                 update.message.reply_text(text='Not enough USDT.')
         else:
@@ -127,46 +135,57 @@ def buy(update, context):
 def sell(update, context):
     try:
         coin = context.args[0].upper()
-        if coin == 'FTM':
-            if PORTFOLIO['FTM'] > 0:
+        if coin in PORTFOLIO.keys():
+            if PORTFOLIO[coin]['COIN'] > 0:
                 symbol = coin + BRIDGE
                 client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-                curr_price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-                sell_ftm(context, curr_price)
+                price = float(client.get_ticker(symbol=symbol)['lastPrice'])
+                sell_coin(context, coin, price)
             else:
-                update.message.reply_text(text='Not enough FTM.')
+                update.message.reply_text(text='Not enough {}.'.format(coin))
         else:
             update.message.reply_text(text='Please provide a valid coin.')
     except:
         update.message.reply_text(text='Error encountered. Please try again later.')
 
-def scout_market(context):
-    symbol = 'FTM' + BRIDGE
-    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-    curr_price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-    if PORTFOLIO['FTM'] > 0:
-        if percent_diff(curr_price, PORTFOLIO['BuyPrice']) > PORTFOLIO['TradeLimit']:
-            sell_ftm(context, curr_price)
-    else:
-        if percent_diff(PORTFOLIO['SellPrice'], curr_price) > PORTFOLIO['TradeLimit']:
-            buy_ftm(context, curr_price)
-        elif (dt.now() - PORTFOLIO['TransTime']).seconds > 60 * 30:
-            buy_ftm(context, curr_price)
+def scout_bnb(context):
+    scout_market(context, 'BNB')
 
-def buy_ftm(context, price):
-    PORTFOLIO['FTM'] = PORTFOLIO['USDT'] / price * (1 - PORTFOLIO['TransFee'])
-    PORTFOLIO['USDT'] = 0
-    PORTFOLIO['BuyPrice'] = price
-    PORTFOLIO['TransTime'] = dt.now()
-    text = BUY_TEMPLATE.format(PORTFOLIO['FTM'], price, PORTFOLIO['FTM'] * price)
+def scout_ada(context):
+    scout_market(context, 'ADA')
+
+def scout_bat(context):
+    scout_market(context, 'BAT')
+
+def scout_ftm(context):
+    scout_market(context, 'FTM')
+
+def scout_market(context, coin):
+    symbol = coin + BRIDGE
+    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
+    kline = client.get_klines(symbol=symbol, interval=Client.KLINE_INTERVAL_1HOUR)
+    k_value, d_value, j_value = get_kdj(kline)
+    k = k_value[-1]
+    d = d_value[-1]
+    if PORTFOLIO[coin]['USDT'] > 0:
+        if d < k:
+            price = float(client.get_ticker(symbol=symbol)['lastPrice'])
+            buy_coin(context, coin, price)
+    else:
+        if d > k:
+            price = float(client.get_ticker(symbol=symbol)['lastPrice'])
+            sell_coin(context, coin, price)
+
+def buy_coin(context, coin, price):
+    PORTFOLIO[coin]['COIN'] = PORTFOLIO[coin]['USDT'] / price * (1 - TRANS_FEE)
+    PORTFOLIO[coin]['USDT'] = 0
+    text = BUY_TEMPLATE.format(PORTFOLIO[coin]['COIN'], coin, price, PORTFOLIO[coin]['COIN'] * price)
     context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
 
-def sell_ftm(context, price):
-    PORTFOLIO['USDT'] = PORTFOLIO['FTM'] * price * (1 - PORTFOLIO['TransFee'])
-    PORTFOLIO['SellPrice'] = price
-    PORTFOLIO['TransTime'] = dt.now()
-    text = SELL_TEMPLATE.format(PORTFOLIO['FTM'], price, PORTFOLIO['USDT'])
-    PORTFOLIO['FTM'] = 0
+def sell_coin(context, coin, price):
+    PORTFOLIO[coin]['USDT'] = PORTFOLIO[coin]['COIN'] * price * (1 - TRANS_FEE)
+    text = SELL_TEMPLATE.format(PORTFOLIO[coin]['COIN'], coin, price, PORTFOLIO[coin]['USDT'])
+    PORTFOLIO[coin]['COIN'] = 0
     context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
 
 
@@ -184,7 +203,10 @@ def main():
     # Job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(period_price_check, interval=500, first=10)
-    job_queue.run_repeating(scout_market, interval=300, first=10)
+    job_queue.run_repeating(scout_bnb, interval=300, first=15)
+    job_queue.run_repeating(scout_ada, interval=300, first=30)
+    job_queue.run_repeating(scout_bat, interval=300, first=45)
+    job_queue.run_repeating(scout_ftm, interval=300, first=60)
     updater.start_polling()
     updater.idle()
 
