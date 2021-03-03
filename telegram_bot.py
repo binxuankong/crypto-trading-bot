@@ -111,8 +111,8 @@ def portfolio(update, context):
         else:
             total_networth += PORTFOLIO[p]['COIN'] * price
             text += PORTFOLIO_BODY.format(p, PORTFOLIO[p]['COIN'], price)
-    net_growth = total_networth - (len(PORTFOLIO * INITIAL)
-    percent_growth = net_growth / (len(PORTFOLIO * INITIAL) * 100
+    net_growth = total_networth - (len(PORTFOLIO) * INITIAL)
+    percent_growth = net_growth / (len(PORTFOLIO) * INITIAL) * 100
     text = PORTFOLIO_HEADER.format(total_fiat) + text + PORTFOLIO_FOOTER.format(total_networth, net_growth, percent_growth)
     update.message.reply_text(emojize(text))
 
