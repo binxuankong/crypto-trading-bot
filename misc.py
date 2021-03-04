@@ -1,5 +1,6 @@
 import emoji
 import numpy as np
+import pandas as pd
 
 def emojize(text):
     return emoji.emojize(text, use_aliases=True)
@@ -7,7 +8,26 @@ def emojize(text):
 def percent_diff(curr, prev):
     return (curr - prev) / prev
 
-def get_kdj(kline, k_periods=9, d_periods=3):
+def get_kdj1(kline):
+    cols = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteVolume', 'NumberTrades',
+        'TakerBuyBaseVolume', 'TakerBuyQuoteVolume', 'Ignore']
+    num_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    df = pd.DataFrame(kline, columns=cols)
+    df = df.drop(columns=['CloseTime', 'QuoteVolume', 'NumberTrades', 'TakerBuyBaseVolume', 'TakerBuyQuoteVolume', 'Ignore'])
+    df[num_cols] = df[num_cols].apply(pd.to_numeric, errors='coerce')
+    low_list = df['Low'].rolling(9, min_periods=9).min()
+    low_list.fillna(value=df['Low'].expanding().min(), inplace=True)
+    high_list = df['High'].rolling(9, min_periods=9).max()
+    high_list.fillna(value=df['High'].expanding().max(), inplace=True)
+    rsv = (df['Close'] - low_list) / (high_list - low_list) * 100
+    df_kdj = df.copy()
+    df_kdj['K'] = pd.DataFrame(rsv).ewm(com=2).mean()
+    df_kdj['D'] = df_kdj['K'].ewm(com=2).mean()
+    df_kdj['J'] = 3 * df_kdj['K'] - 2 * df_kdj['D']
+    return df_kdj.tail(1)['K'].item(), df_kdj.tail(1)['D'].item(), df_kdj.tail(1)['J'].item()
+
+
+def get_kdj2(kline, k_periods=9, d_periods=3):
     k_periods -= 1
     array_open = np.array([k[1] for k in kline]).astype(np.float)
     array_high = np.array([k[2] for k in kline]).astype(np.float)

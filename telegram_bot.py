@@ -17,10 +17,11 @@ COINS = ['BTC', 'ETH', 'LTC', 'XRP', 'BNB', 'ADA', 'BAT', 'FTM']
 NOTIF_LIMIT = 2
 
 # Portfolio
-INITIAL = 250
+INITIAL = 200
 TRANS_FEE = 0.001
-PORTFOLIO = {'BNB': {'USDT': INITIAL, 'COIN': 0}, 'ADA': {'USDT': INITIAL, 'COIN': 0}, 'BAT': {'USDT': INITIAL, 'COIN': 0},
-             'FTM': {'USDT': INITIAL, 'COIN': 0}}
+PORTFOLIO = {'BTC': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]}, 'ETH': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]},
+             'BNB': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]}, 'BAT': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]},
+             'FTM': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]}}
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 

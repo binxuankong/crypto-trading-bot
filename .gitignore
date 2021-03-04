@@ -1,5 +1,6 @@
 __pycache__/
 .ipynb_checkpoints
+.DS_Store
 trade_env/
 secrets.py
 nohup.out
