@@ -1,6 +1,8 @@
 import emoji
 import numpy as np
 import pandas as pd
+import requests
+from secrets import secrets
 
 def emojize(text):
     return emoji.emojize(text, use_aliases=True)
@@ -8,6 +10,7 @@ def emojize(text):
 def percent_diff(curr, prev):
     return (curr - prev) / prev
 
+# Trade Bot
 def get_kdj1(kline):
     cols = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'CloseTime', 'QuoteVolume', 'NumberTrades',
         'TakerBuyBaseVolume', 'TakerBuyQuoteVolume', 'Ignore']
@@ -88,3 +91,23 @@ def get_lowest_values(array_low, k_periods):
         array_lowest.append(z)
         y -= (k_periods - 1)
     return array_lowest
+
+# Reddit Scraper
+def get_reddit_trending(coins, sub='cryptocurrency', mode='hot'):
+    auth = requests.auth.HTTPBasicAuth(secrets['REDDIT_API_KEY'], secrets['REDDIT_SECRET_KEY'])
+    headers = {'User-Agent': 'MyBot/0.0.1'}
+    data = {'grant_type': 'password', 'username': secrets['REDDIT_USERNAME'], 'password': secrets['REDDIT_PASSWORD']}
+    res = requests.post('https://www.reddit.com/api/v1/access_token', auth=auth, data=data, headers=headers)
+    TOKEN = res.json()['access_token']
+    headers = {**headers, **{'Authorization': f"bearer {TOKEN}"}}
+    df = pd.DataFrame(columns=['coin', 'mentions'])
+    df['coin'] = coins
+    df['mentions'] = 0
+    res = requests.get('https://oauth.reddit.com/r/{}/{}'.format(sub, mode), headers=headers, params={'limit': 100})
+    for post in res.json()['data']['children']:
+        text = post['data']['title'] + ' ' + post['data']['selftext']
+        for coin in coins:
+            if coin in text:
+                df.loc[df['coin'] == coin, 'mentions'] += 1
+    df = df.sort_values(by='mentions', ascending=False)
+    return df.head(10).to_dict('records')

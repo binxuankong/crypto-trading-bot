@@ -6,6 +6,7 @@ HELP_TEMPLATE = """
  - /check [coin]
  - /winner
  - /loser
+ - /reddit [sub]
 """
 
 CHECK_TEMPLATE = """{} :full_moon: - {} :dollar:
@@ -85,12 +86,14 @@ PORTFOLIO_FOOTER = """:moneybag: Networth:\t{}
 :chart_with_upwards_trend: Percent Growth:\t{}%
 """
 
-BUY_TEMPLATE = """BOUGHT {} {}
-    @ {}
-NET: {}
+BUY_TEMPLATE = """{}
+- BOUGHT {:.8f} {}
+- \t@ {}
+- NET: {}
 """
 
-SELL_TEMPLATE = """SOLD {} {}
-    @ {}
-NET: {}
+SELL_TEMPLATE = """{}
+- SOLD {:.8f} {}
+- \t@ {}
+- NET: {}
 """
