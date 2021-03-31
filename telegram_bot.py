@@ -98,7 +98,7 @@ def period_daily_check(context):
     info = client.get_exchange_info()
     coins = [s['baseAsset'] for s in info['symbols']]
     coins = list(set(coins))
-    top_coins = get_reddit_daily(coins, context.args[0])
+    top_coins = get_reddit_daily(coins)
     text = ":alien: r/CryptoCurrency Daily Top Mentions :alien:"
     for i, coin in enumerate(top_coins):
         text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
