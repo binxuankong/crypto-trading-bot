@@ -14,7 +14,10 @@ TELEGRAM_TOKEN = secrets['TELEGRAM_TOKEN']
 BINANCE_API_KEY = secrets['BINANCE_API_KEY']
 BINANCE_SECRET_KEY = secrets['BINANCE_SECRET_KEY']
 BRIDGE = 'USDT'
-COINS = ['BTC', 'ETH', 'LTC', 'XRP', 'BNB', 'ADA', 'BAT', 'OGN', 'FTM']
+COINS = []
+with open('coins.txt') as f:
+    for line in f:
+        COINS.append(line.strip('\n'))
 NOTIF_LIMIT = 2
 
 # Portfolio
@@ -86,6 +89,17 @@ def period_reddit_check(context):
     coins = list(set(coins))
     top_coins = get_reddit_trending(coins)
     text = ":alien: Reddit Top Mentions :alien:"
+    for i, coin in enumerate(top_coins):
+        text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
+    context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
+
+def period_daily_check(context):
+    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
+    info = client.get_exchange_info()
+    coins = [s['baseAsset'] for s in info['symbols']]
+    coins = list(set(coins))
+    top_coins = get_reddit_daily(coins, context.args[0])
+    text = ":alien: r/CryptoCurrency Daily Top Mentions :alien:"
     for i, coin in enumerate(top_coins):
         text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
     context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
@@ -257,18 +271,19 @@ def main():
     dp.add_handler(CommandHandler('winner', winner))
     dp.add_handler(CommandHandler('loser', loser))
     dp.add_handler(CommandHandler('reddit', reddit))
-    dp.add_handler(CommandHandler('portfolio', portfolio))
-    dp.add_handler(CommandHandler('buy', buy))
-    dp.add_handler(CommandHandler('sell', sell))
+    # dp.add_handler(CommandHandler('portfolio', portfolio))
+    # dp.add_handler(CommandHandler('buy', buy))
+    # dp.add_handler(CommandHandler('sell', sell))
     # Job queue
     job_queue = updater.job_queue
-    job_queue.run_repeating(period_price_check, interval=600, first=10)
-    job_queue.run_repeating(period_reddit_check, interval=3600, first=20)
-    job_queue.run_repeating(scout_btc, interval=600, first=15)
-    job_queue.run_repeating(scout_eth, interval=600, first=30)
-    job_queue.run_repeating(scout_bnb, interval=600, first=45)
-    job_queue.run_repeating(scout_bat, interval=600, first=60)
-    job_queue.run_repeating(scout_ftm, interval=600, first=75)
+    job_queue.run_repeating(period_price_check, interval=500, first=10)
+    # job_queue.run_repeating(period_reddit_check, interval=1750, first=20)
+    job_queue.run_repeating(period_daily_check, interval=1750, first=20)
+    # job_queue.run_repeating(scout_btc, interval=600, first=15)
+    # job_queue.run_repeating(scout_eth, interval=600, first=30)
+    # job_queue.run_repeating(scout_bnb, interval=600, first=45)
+    # job_queue.run_repeating(scout_bat, interval=600, first=60)
+    # job_queue.run_repeating(scout_ftm, interval=600, first=75)
     updater.start_polling()
     updater.idle()
 

@@ -111,3 +111,37 @@ def get_reddit_trending(coins, sub='cryptocurrency', mode='hot'):
                 df.loc[df['coin'] == coin, 'mentions'] += 1
     df = df.sort_values(by='mentions', ascending=False)
     return df.head(10).to_dict('records')
+
+def get_reddit_daily(coins, comments=1000):
+    auth = requests.auth.HTTPBasicAuth(secrets['REDDIT_API_KEY'], secrets['REDDIT_SECRET_KEY'])
+    headers = {'User-Agent': 'MyBot/0.0.1'}
+    data = {'grant_type': 'password', 'username': secrets['REDDIT_USERNAME'], 'password': secrets['REDDIT_PASSWORD']}
+    res = requests.post('https://www.reddit.com/api/v1/access_token', auth=auth, data=data, headers=headers)
+    TOKEN = res.json()['access_token']
+    headers = {**headers, **{'Authorization': f"bearer {TOKEN}"}}
+    df = pd.DataFrame(columns=['coin', 'mentions'])
+    df['coin'] = coins
+    df['mentions'] = 0
+    res = requests.get("https://oauth.reddit.com/r/cryptocurrency/hot", headers=headers, params={'limit': 10})
+    for post in res.json()['data']['children']:
+        if 'Daily Discussion' in post['data']['title']:
+            daily_id = post['data']['id']
+            break
+    res2 = requests.get("https://oauth.reddit.com/r/cryptocurrency/comments/" + daily_id, headers=headers, params={'limit': comments})
+    for post in res2.json()[1]['data']['children']:
+        text = get_comments(post['data'])
+        for coin in coins:
+            if coin in text:
+                df.loc[df['coin'] == coin, 'mentions'] += 1
+    df = df.sort_values(by='mentions', ascending=False)
+    return df.head(10).to_dict('records')
+
+def get_comments(p_comment):
+    if 'body' not in p_comment:
+        return ''
+    text = p_comment['body']
+    replies = p_comment['replies']
+    if len(replies) > 0:
+        for c_comment in replies['data']['children']:
+            text += ' ' + get_comments(c_comment['data'])
+    return text
