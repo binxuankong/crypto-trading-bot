@@ -14,10 +14,6 @@ TELEGRAM_TOKEN = secrets['TELEGRAM_TOKEN']
 BINANCE_API_KEY = secrets['BINANCE_API_KEY']
 BINANCE_SECRET_KEY = secrets['BINANCE_SECRET_KEY']
 BRIDGE = 'USDT'
-COINS = []
-with open('coins.txt') as f:
-    for line in f:
-        COINS.append(line.strip('\n'))
 NOTIF_LIMIT = 2
 
 # Portfolio
@@ -36,18 +32,44 @@ def error(update, context):
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 def help(update, context):
-    coins = ', '.join(COINS)
-    update.message.reply_text(emojize(HELP_TEMPLATE.format(COINS)))
+    coins = ', '.join(get_coins())
+    update.message.reply_text(emojize(HELP_TEMPLATE.format(coins)))
 
 def check(update, context):
     try:
         coin = context.args[0].upper()
-        if coin in COINS:
+        if coin in get_coins():
             get_coin_price(update, context, coin)
         else:
             update.message.reply_text(text='Please provide a valid coin.')
     except:
         update.message.reply_text(text='Error encountered. Please provide a valid coin.')
+
+def add(update, context):
+    coin = context.args[0].upper()
+    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
+    info = client.get_exchange_info()
+    coins = [s['baseAsset'] for s in info['symbols']]
+    coins = list(set(coins))
+    if coin in coins:
+        try:
+            add_coin(coin)
+            update.message.reply_text(text='{} added to coin list.'.format(coin))
+        except:
+            update.message.reply_text(text='Error encountered. Unable to add {} to coin list.'.format(coin))
+    else:
+        update.message.reply_text(text='{} not found in Binance. Please provide a valid coin'.format(coin))
+
+def remove(update, context):
+    coin = context.args[0].upper()
+    if coin in get_coins():
+        try:
+            remove_coin(coin)
+            update.message.reply_text(text='{} removed from coin list.'.format(coin))
+        except:
+            update.message.reply_text(text='Error encountered. Unable to remove {} to coin list.'.format(coin))
+    else:
+        update.message.reply_text(text='{} not found in coin list. Please provide a valid coin'.format(coin))
 
 def winner(update, context):
     arg_list = get_top_change(reverse=True)
@@ -64,34 +86,25 @@ def reddit(update, context):
     coins = list(set(coins))
     if len(context.args) > 0:
         try:
+            subreddit = context.args[0]
             top_coins = get_reddit_trending(coins, context.args[0])
         except:
-            update.message.reply_text('Please provide a valid sub.')
+            update.message.reply_text('Please provide a valid subreddit.')
             return
     else:
+        subreddit = 'CryptoCurrency'
         top_coins = get_reddit_trending(coins)
-    text = ":alien: Reddit Top Mentions :alien:"
+    text = ":alien: {} Top Mentions :alien:".format(subreddit)
     for i, coin in enumerate(top_coins):
         text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
     update.message.reply_text(text=emojize(text))
 
 def period_price_check(context):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-    for coin in COINS:
+    for coin in get_coins():
         text = get_price_change(coin, client)
         if len(text) > 0:
             context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
-
-def period_reddit_check(context):
-    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-    info = client.get_exchange_info()
-    coins = [s['baseAsset'] for s in info['symbols']]
-    coins = list(set(coins))
-    top_coins = get_reddit_trending(coins)
-    text = ":alien: Reddit Top Mentions :alien:"
-    for i, coin in enumerate(top_coins):
-        text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
-    context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
 
 def period_daily_check(context):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
@@ -99,7 +112,7 @@ def period_daily_check(context):
     coins = [s['baseAsset'] for s in info['symbols']]
     coins = list(set(coins))
     top_coins = get_reddit_daily(coins)
-    text = ":alien: r/CryptoCurrency Daily Top Mentions :alien:"
+    text = ":alien: r/cc Daily Top Mentions :alien:"
     for i, coin in enumerate(top_coins):
         text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
     context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
@@ -132,7 +145,7 @@ def get_price_change(coin, client):
 def get_top_change(reverse=False):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
     dict_list = []
-    for coin in COINS:
+    for coin in get_coins():
         symbol = coin + BRIDGE
         t = client.get_ticker(symbol=symbol)
         dict_list.append({'coin': coin, 'price': t['lastPrice'], 'price_change': t['priceChangePercent']})
@@ -211,18 +224,6 @@ def sell(update, context):
 def scout_btc(context):
     scout_market(context, 'BTC')
 
-def scout_eth(context):
-    scout_market(context, 'ETH')
-
-def scout_bnb(context):
-    scout_market(context, 'BNB')
-
-def scout_bat(context):
-    scout_market(context, 'BAT')
-
-def scout_ftm(context):
-    scout_market(context, 'FTM')
-
 def scout_market(context, coin):
     symbol = coin + BRIDGE
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
@@ -240,8 +241,6 @@ def scout_market(context, coin):
 def buy_coin(context, coin, price):
     PORTFOLIO[coin]['COIN'] = PORTFOLIO[coin]['USDT'] / price * (1 - TRANS_FEE)
     PORTFOLIO[coin]['USDT'] = 0
-    # text = BUY_TEMPLATE.format(PORTFOLIO[coin]['COIN'], coin, price, PORTFOLIO[coin]['COIN'] * price)
-    # context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
     if len(PORTFOLIO[coin]['HIST']) >= 5:
         PORTFOLIO[coin]['HIST'].pop(0)
     tz = pytz.timezone('Asia/Kuala_Lumpur')
@@ -251,9 +250,7 @@ def buy_coin(context, coin, price):
 
 def sell_coin(context, coin, price):
     PORTFOLIO[coin]['USDT'] = PORTFOLIO[coin]['COIN'] * price * (1 - TRANS_FEE)
-    # text = SELL_TEMPLATE.format(PORTFOLIO[coin]['COIN'], coin, price, PORTFOLIO[coin]['USDT'])
     PORTFOLIO[coin]['COIN'] = 0
-    # context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=emojize(text))
     if len(PORTFOLIO[coin]['HIST']) >= 5:
         PORTFOLIO[coin]['HIST'].pop(0)
     tz = pytz.timezone('Asia/Kuala_Lumpur')
@@ -268,6 +265,8 @@ def main():
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('help', help))
     dp.add_handler(CommandHandler('check', check))
+    dp.add_handler(CommandHandler('add', add))
+    dp.add_handler(CommandHandler('remove', remove))
     dp.add_handler(CommandHandler('winner', winner))
     dp.add_handler(CommandHandler('loser', loser))
     dp.add_handler(CommandHandler('reddit', reddit))
@@ -277,13 +276,9 @@ def main():
     # Job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(period_price_check, interval=500, first=10)
-    # job_queue.run_repeating(period_reddit_check, interval=1750, first=20)
-    job_queue.run_repeating(period_daily_check, interval=1750, first=20)
+    job_queue.run_repeating(period_daily_check, interval=3500, first=20)
     # job_queue.run_repeating(scout_btc, interval=600, first=15)
     # job_queue.run_repeating(scout_eth, interval=600, first=30)
-    # job_queue.run_repeating(scout_bnb, interval=600, first=45)
-    # job_queue.run_repeating(scout_bat, interval=600, first=60)
-    # job_queue.run_repeating(scout_ftm, interval=600, first=75)
     updater.start_polling()
     updater.idle()
 

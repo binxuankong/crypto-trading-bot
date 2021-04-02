@@ -2,7 +2,31 @@ import emoji
 import numpy as np
 import pandas as pd
 import requests
+import re
 from secrets import secrets
+
+def get_coins():
+    coins = []
+    with open('coins.txt') as f:
+        for line in f:
+            coins.append(line.strip('\n'))
+    return coins
+
+def add_coin(coin):
+    coins = get_coins()
+    coins.append(coin)
+    with open('coins.txt', 'w') as f:
+        f.truncate(0)
+        f.write('\n'.join(coins))
+    return coins
+
+def remove_coin(coin):
+    coins = get_coins()
+    coins.remove(coin)
+    with open('coins.txt', 'w') as f:
+        f.truncate(0)
+        f.write('\n'.join(coins))
+    return coins
 
 def emojize(text):
     return emoji.emojize(text, use_aliases=True)
@@ -107,7 +131,8 @@ def get_reddit_trending(coins, sub='cryptocurrency', mode='hot'):
     for post in res.json()['data']['children']:
         text = post['data']['title'] + ' ' + post['data']['selftext']
         for coin in coins:
-            if coin in text:
+            pattern = r'\b{}\b'.format(coin)
+            if re.search(pattern, text) is not None:
                 df.loc[df['coin'] == coin, 'mentions'] += 1
     df = df.sort_values(by='mentions', ascending=False)
     return df.head(10).to_dict('records')
@@ -131,7 +156,8 @@ def get_reddit_daily(coins, comments=1000):
     for post in res2.json()[1]['data']['children']:
         text = get_comments(post['data'])
         for coin in coins:
-            if coin in text:
+            pattern = r'\b{}\b'.format(coin)
+            if re.search(pattern, text) is not None:
                 df.loc[df['coin'] == coin, 'mentions'] += 1
     df = df.sort_values(by='mentions', ascending=False)
     return df.head(10).to_dict('records')

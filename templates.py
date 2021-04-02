@@ -4,9 +4,11 @@ HELP_TEMPLATE = """
 :information_source: Commands:
  - /help
  - /check [coin]
+ - /add [coin]
+ - /remove [coin]
  - /winner
  - /loser
- - /reddit [sub]
+ - /reddit [subreddit]
 """
 
 CHECK_TEMPLATE = """{} :full_moon: - {} :dollar:
