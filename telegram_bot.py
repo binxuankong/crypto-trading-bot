@@ -47,6 +47,9 @@ def check(update, context):
 
 def add(update, context):
     coin = context.args[0].upper()
+    if coin in get_coins():
+        update.message.reply_text(text='{} already in coin list.'.format(coin))
+        return
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
     info = client.get_exchange_info()
     coins = [s['baseAsset'] for s in info['symbols']]
