@@ -127,7 +127,7 @@ def get_coin_price(update, context, coin):
     t = client.get_ticker(symbol=symbol)
     text = CHECK_TEMPLATE.format(coin, BRIDGE, t['lastPrice'], avg_price, t['weightedAvgPrice'], t['priceChange'], 
                                 t['priceChangePercent'], t['openPrice'], t['highPrice'], t['lowPrice'],
-                                t['prevClosePrice'])
+                                t['volume'])
     update.message.reply_text(text=emojize(text))
 
 def get_price_change(coin, client):

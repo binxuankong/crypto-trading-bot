@@ -20,7 +20,7 @@ CHECK_TEMPLATE = """{} :full_moon: - {} :dollar:
 :unlock: Open Price:\t\t{}
 :chart_with_upwards_trend: High Price:\t\t{}
 :chart_with_downwards_trend: Low Price:\t\t{}
-:lock: Close Price:\t\t{}
+:bar_chart: Volume:\t\t{}
 """
 
 UP_TEMPLATE = """:heavy_exclamation_mark: :heavy_exclamation_mark: Heavy Swing Alert :heavy_exclamation_mark: :heavy_exclamation_mark:
