@@ -1,5 +1,6 @@
 numpy
 pandas
+seaborn
 pytz
 python-binance
 python-telegram-bot

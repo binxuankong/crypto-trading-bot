@@ -8,6 +8,8 @@ HELP_TEMPLATE = """
  - /remove [coin]
  - /winner
  - /loser
+ - /line [coin]
+ - /candle [coin]
  - /reddit [subreddit]
 """
 

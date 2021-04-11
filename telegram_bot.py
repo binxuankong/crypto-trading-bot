@@ -1,3 +1,4 @@
+import os
 import logging
 import telegram
 import pytz
@@ -16,13 +17,6 @@ BINANCE_SECRET_KEY = secrets['BINANCE_SECRET_KEY']
 BRIDGE = 'USDT'
 NOTIF_LIMIT = 2
 
-# Portfolio
-INITIAL = 200
-TRANS_FEE = 0.001
-PORTFOLIO = {'BTC': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]}, 'ETH': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]},
-             'BNB': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]}, 'BAT': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]},
-             'FTM': {'USDT': INITIAL, 'COIN': 0, 'HIST':[]}}
-
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 logger = logging.getLogger(__name__)
@@ -38,12 +32,9 @@ def help(update, context):
 def check(update, context):
     try:
         coin = context.args[0].upper()
-        if coin in get_coins():
-            get_coin_price(update, context, coin)
-        else:
-            update.message.reply_text(text='Please provide a valid coin.')
+        get_coin_price(update, context, coin)
     except:
-        update.message.reply_text(text='Error encountered. Please provide a valid coin.')
+        update.message.reply_text(text='Please provide a valid coin.')
 
 def add(update, context):
     coin = context.args[0].upper()
@@ -81,6 +72,34 @@ def winner(update, context):
 def loser(update, context):
     arg_list = get_top_change()
     update.message.reply_text(text=emojize(LOSE_TEMPLATE.format(*arg_list)))
+
+def line(update, context):
+    try:
+        coin = context.args[0].upper()
+        symbol = coin + BRIDGE
+        client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
+        kline = client.get_klines(symbol=symbol, interval=Client.KLINE_INTERVAL_15MINUTE, limit=96)
+    except:
+        update.message.reply_text(text='Please provide a valid coin.')
+        return
+    file_name = line_plot(coin, kline)
+    context.bot.send_photo(chat_id=update.message.chat_id, photo=open(file_name, 'rb'),
+                           reply_to_message_id=update.message.message_id, allow_sending_without_reply=False)
+    os.remove(file_name)
+
+def candle(update, context):
+    try:
+        coin = context.args[0].upper()
+        symbol = coin + BRIDGE
+        client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
+        kline = client.get_klines(symbol=symbol, interval=Client.KLINE_INTERVAL_15MINUTE, limit=96)
+    except:
+        update.message.reply_text(text='Please provide a valid coin.')
+        return
+    file_name = candle_plot(coin, kline)
+    context.bot.send_photo(chat_id=update.message.chat_id, photo=open(file_name, 'rb'),
+                           reply_to_message_id=update.message.message_id, allow_sending_without_reply=False)
+    os.remove(file_name)
 
 def reddit(update, context):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
@@ -156,112 +175,6 @@ def get_top_change(reverse=False):
     arg_list = [item for sublist in [list(d.values()) for d in dict_list] for item in sublist]
     return arg_list
 
-# Tradebot functions
-def portfolio(update, context):
-    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-    try:
-        coin = context.args[0].upper()
-        if coin in PORTFOLIO.keys():
-            portfolio = PORTFOLIO[coin]
-            symbol = coin + BRIDGE
-            price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-            text = PORTFOLIO_HEADER.format(portfolio['USDT'])
-            text += PORTFOLIO_BODY.format(coin, portfolio['COIN'], price)
-            text += 'Past Transactions'
-            for h in portfolio['HIST']:
-                text += '\n' + h
-            update.message.reply_text(emojize(text))
-        else:
-            update.message.reply_text(text='Please provide a valid coin.')
-    except:
-        total_fiat = 0
-        total_networth = 0
-        text = ""
-        for p in PORTFOLIO:
-            symbol = p + BRIDGE
-            price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-            if PORTFOLIO[p]['USDT'] > 0:
-                total_fiat += PORTFOLIO[p]['USDT']
-                total_networth += PORTFOLIO[p]['USDT']
-                text += PORTFOLIO_BODY.format(p, 0, price)
-            else:
-                total_networth += PORTFOLIO[p]['COIN'] * price
-                text += PORTFOLIO_BODY.format(p, PORTFOLIO[p]['COIN'], price)
-        net_growth = total_networth - (len(PORTFOLIO) * INITIAL)
-        percent_growth = net_growth / (len(PORTFOLIO) * INITIAL) * 100
-        text = PORTFOLIO_HEADER.format(total_fiat) + text + PORTFOLIO_FOOTER.format(total_networth, net_growth, percent_growth)
-        update.message.reply_text(emojize(text))
-
-def buy(update, context):
-    try:
-        coin = context.args[0].upper()
-        if coin in PORTFOLIO.keys():
-            if PORTFOLIO[coin]['USDT'] > 0:
-                symbol = coin + BRIDGE
-                client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-                price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-                buy_coin(context, coin, price)
-            else:
-                update.message.reply_text(text='Not enough USDT.')
-        else:
-            update.message.reply_text(text='Please provide a valid coin.')
-    except:
-        update.message.reply_text(text='Error encountered. Please try again later.')
-
-def sell(update, context):
-    try:
-        coin = context.args[0].upper()
-        if coin in PORTFOLIO.keys():
-            if PORTFOLIO[coin]['COIN'] > 0:
-                symbol = coin + BRIDGE
-                client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-                price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-                sell_coin(context, coin, price)
-            else:
-                update.message.reply_text(text='Not enough {}.'.format(coin))
-        else:
-            update.message.reply_text(text='Please provide a valid coin.')
-    except:
-        update.message.reply_text(text='Error encountered. Please try again later.')
-
-def scout_btc(context):
-    scout_market(context, 'BTC')
-
-def scout_market(context, coin):
-    symbol = coin + BRIDGE
-    client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-    kline = client.get_klines(symbol=symbol, interval=Client.KLINE_INTERVAL_1HOUR)
-    k, d, j = get_kdj1(kline)
-    if PORTFOLIO[coin]['USDT'] > 0:
-        if d < k:
-            price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-            buy_coin(context, coin, price)
-    else:
-        if d > k:
-            price = float(client.get_ticker(symbol=symbol)['lastPrice'])
-            sell_coin(context, coin, price)
-
-def buy_coin(context, coin, price):
-    PORTFOLIO[coin]['COIN'] = PORTFOLIO[coin]['USDT'] / price * (1 - TRANS_FEE)
-    PORTFOLIO[coin]['USDT'] = 0
-    if len(PORTFOLIO[coin]['HIST']) >= 5:
-        PORTFOLIO[coin]['HIST'].pop(0)
-    tz = pytz.timezone('Asia/Kuala_Lumpur')
-    text = BUY_TEMPLATE.\
-        format(dt.now(tz).strftime('%Y/%m/%d %H:%M:%S'), PORTFOLIO[coin]['COIN'], coin, price, PORTFOLIO[coin]['COIN'] * price)
-    PORTFOLIO[coin]['HIST'].append(text)
-
-def sell_coin(context, coin, price):
-    PORTFOLIO[coin]['USDT'] = PORTFOLIO[coin]['COIN'] * price * (1 - TRANS_FEE)
-    PORTFOLIO[coin]['COIN'] = 0
-    if len(PORTFOLIO[coin]['HIST']) >= 5:
-        PORTFOLIO[coin]['HIST'].pop(0)
-    tz = pytz.timezone('Asia/Kuala_Lumpur')
-    text = SELL_TEMPLATE.\
-        format(dt.now(tz).strftime('%Y/%m/%d %H:%M:%S'), PORTFOLIO[coin]['COIN'], coin, price, PORTFOLIO[coin]['USDT'])
-    PORTFOLIO[coin]['HIST'].append(text)
-
-
 def main():
     updater = Updater(token=TELEGRAM_TOKEN)
     # Bot commands
@@ -272,16 +185,13 @@ def main():
     dp.add_handler(CommandHandler('remove', remove))
     dp.add_handler(CommandHandler('winner', winner))
     dp.add_handler(CommandHandler('loser', loser))
+    dp.add_handler(CommandHandler('line', line))
+    dp.add_handler(CommandHandler('candle', candle))
     dp.add_handler(CommandHandler('reddit', reddit))
-    # dp.add_handler(CommandHandler('portfolio', portfolio))
-    # dp.add_handler(CommandHandler('buy', buy))
-    # dp.add_handler(CommandHandler('sell', sell))
     # Job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(period_price_check, interval=500, first=10)
     job_queue.run_repeating(period_daily_check, interval=3500, first=20)
-    # job_queue.run_repeating(scout_btc, interval=600, first=15)
-    # job_queue.run_repeating(scout_eth, interval=600, first=30)
     updater.start_polling()
     updater.idle()
 
