@@ -1,7 +1,7 @@
 HELP_TEMPLATE = """
 :full_moon: Coins available:
 {}
-:information_source: Commands:
+:information_source: Information Commands:
  - /help
  - /check [coin]
  - /add [coin]
@@ -11,6 +11,11 @@ HELP_TEMPLATE = """
  - /line [coin]
  - /candle [coin]
  - /reddit [subreddit]
+:information_source: Paper Trading Commands:
+ - /portfolio
+ - /invest [amount]
+ - /buy [coin] [amount]
+ - /sell [coin] [amount]
 """
 
 CHECK_TEMPLATE = """{} :full_moon: - {} :dollar:
