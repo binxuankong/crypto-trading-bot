@@ -275,7 +275,7 @@ def main():
     # Job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(period_price_check, interval=500, first=10)
-    # job_queue.run_repeating(period_daily_check, interval=3500, first=20)
+    job_queue.run_repeating(period_daily_check, interval=3500, first=20)
     updater.start_polling()
     updater.idle()
 
