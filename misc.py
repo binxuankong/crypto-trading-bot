@@ -84,13 +84,13 @@ def candle_plot(coin, kline):
     plt.style.use('dark_background')
     ax = fig.add_subplot()
     for _, row in df.iterrows():
-        ax.vlines(x=row['CloseTime'], ymin=row['Low'], ymax=row['High'], color='black', linewidth=1)
+        ax.vlines(x=row['CloseTime'], ymin=row['Low'], ymax=row['High'], color='white', linewidth=1)
         if row['Close'] > row['Open']:
             ax.vlines(x=row['CloseTime'], ymin=row['Open'], ymax=row['Close'], color='green', linewidth=4)
         elif row['Close'] < row['Open']:
             ax.vlines(x=row['CloseTime'], ymin=row['Close'], ymax=row['Open'], color='red', linewidth=4)
         else:
-            ax.vlines(x=row['CloseTime'], ymin=row['Open'], ymax=row['Close'], color='black', linewidth=4)
+            ax.vlines(x=row['CloseTime'], ymin=row['Open'], ymax=row['Close'], color='white', linewidth=4)
     date_fmt = mdates.DateFormatter('%m-%d %H:%M')
     ax.xaxis.set_major_formatter(date_fmt)
     ax.set_title(coin + '-USD Price Chart')

@@ -8,6 +8,7 @@ from binance.client import Client
 from binance.exceptions import BinanceAPIException
 from secrets import secrets
 from misc import *
+from trade_func import *
 from templates import *
 
 TELEGRAM_CHAT_ID = secrets['TELEGRAM_CHAT_ID']
@@ -15,6 +16,7 @@ TELEGRAM_TOKEN = secrets['TELEGRAM_TOKEN']
 BINANCE_API_KEY = secrets['BINANCE_API_KEY']
 BINANCE_SECRET_KEY = secrets['BINANCE_SECRET_KEY']
 BRIDGE = 'USDT'
+TRANS_FEE = 0.0075
 NOTIF_LIMIT = 2
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -121,6 +123,84 @@ def reddit(update, context):
         text += "\n{}. {} @ {}".format(i+1, coin['coin'], coin['mentions'])
     update.message.reply_text(text=emojize(text))
 
+# Portfolio
+def invest(update, context):
+    try:
+        amount = float(context.args[0])
+        print(amount)
+    except:
+        update.message.reply_text(text='Please provide a valid amount to invest.')
+        return
+    user_id = update.message.chat.id
+    res = invest_func(user_id, amount)
+    update.message.reply_text(text='Successfully invested ${}.'.format(amount))
+
+def valid_check(context):
+    try:
+        coin = context.args[0].upper()
+        price = check_price(coin)
+    except:
+        return -1
+    amount = None
+    if len(context.args) > 1:
+        try:
+            amount = float(context.args[1])
+            if amount < 0:
+                return -2
+        except:
+            return -2
+    return coin, price, amount
+
+def buy(update, context):
+    valid = valid_check(context)
+    if isinstance(valid, tuple):
+        coin, price, amount = valid
+        user_id = update.message.chat.id
+        amount, res = buy_func(user_id, coin, amount, price)
+        if res >= 0:
+            update.message.reply_text(text='Successfully bought {:.4f} {} (Priced @ {:.2f}) for ${:.2f}.'\
+                                    .format(res, coin, price, amount))
+        else:
+            update.message.reply_text(text='Not enough USD for transaction. Missing ${:.2f}.'.format(-1 * res))
+    elif valid == -1:
+        update.message.reply_text(text='Please provide a valid coin')
+    elif valid == -2:
+        update.message.reply_text(text='Please provide a valid amount to buy.')
+
+def sell(update, context):
+    valid = valid_check(context)
+    if isinstance(valid, tuple):
+        coin, price, amount = valid
+        user_id = update.message.chat.id
+        amount, res = sell_func(user_id, coin, amount, price)
+        if res >= 0:
+            update.message.reply_text(text='Successfully sold {:.4f} {} (Priced @ {:.2f}) for ${:.2f}.'\
+                                    .format(amount, coin, price, res))
+        else:
+            update.message.reply_text(text='Not enough {} for transaction. Missing {:.4f}.'.format(coin, -1 * res))
+    elif valid == -1:
+        update.message.reply_text(text='Please provide a valid coin')
+    elif valid == -2:
+        update.message.reply_text(text='Please provide a valid amount to buy.')
+
+def portfolio(update, context):
+    user_id = update.message.chat.id
+    initial, df = portfolio_func(user_id)
+    if initial == -1:
+        update.message.reply_text(text='Portfolio not found.')
+    else:
+        curr_val = df['Value'].sum()
+        profit = curr_val - initial
+        percent = profit / initial * 100
+        coins = df.loc[df['Amount'] > 0].to_dict('records')
+        # Message
+        portfolio_temp = """Portfolio:\t ${:.2f}\nInitial:\t ${:.2f}\nProfit:\t\t ${:.2f} ({:.2f}%)\nWallet:"""\
+            .format(curr_val, initial, profit, percent)
+        for coin in coins:
+            portfolio_temp += "\n- {:.4f} {}\t ~ ${:.2f}".format(coin['Amount'], coin['Coin'], coin['Value'])
+        update.message.reply_text(text=portfolio_temp)
+
+# Schedule
 def period_price_check(context):
     client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
     for coin in get_coins():
@@ -188,10 +268,14 @@ def main():
     dp.add_handler(CommandHandler('line', line))
     dp.add_handler(CommandHandler('candle', candle))
     dp.add_handler(CommandHandler('reddit', reddit))
+    dp.add_handler(CommandHandler('invest', invest))
+    dp.add_handler(CommandHandler('buy', buy))
+    dp.add_handler(CommandHandler('sell', sell))
+    dp.add_handler(CommandHandler('portfolio', portfolio))
     # Job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(period_price_check, interval=500, first=10)
-    job_queue.run_repeating(period_daily_check, interval=3500, first=20)
+    # job_queue.run_repeating(period_daily_check, interval=3500, first=20)
     updater.start_polling()
     updater.idle()
 
